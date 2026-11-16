@@ -98,6 +98,7 @@ The server creates a single HTTP server for Express and Socket.IO. Auction-detai
 |       |-- services/      Deal locking, settlement job, payment capture, audit log
 |       |-- utils/         JWT, mail, and upload helpers
 |       `-- server.js      HTTP and Socket.IO bootstrap, settlement job start
+|   |-- seed/              Demo data and the `npm run seed` script
 |   `-- tests/             API and concurrency tests (Vitest + Supertest)
 |-- frontend/
 |   `-- src/
@@ -207,6 +208,46 @@ Open the Vite address shown in the terminal (normally `http://localhost:5173`). 
 ### Administrator access
 
 Public signup intentionally permits only the `farmer` and `buyer` roles. To use moderation, provision an administrator directly through trusted database administration tooling by setting an existing user's `role` to `admin`. Do not expose an unauthenticated public endpoint for this operation.
+
+### Demo data
+
+To fill the app with realistic demo data (for a walkthrough or a recording):
+
+```bash
+cd backend
+npm run seed
+```
+
+**This deletes all existing FarmEasy data** in the database named by `MONGO_URI`, then inserts 10 accounts, 12 produce listings with photos, bids, payments, reviews and a full audit trail. It asks you to type `yes` first (`npm run seed -- --yes` skips the prompt). Times are relative to when you run it, so re-run it right before a demo.
+
+Every demo account uses the password `Demo@1234`:
+
+| Role | Name | Email |
+| --- | --- | --- |
+| Admin | FarmEasy Admin | `admin@example.com` |
+| Farmer | Ramesh Patel | `ramesh.farmer@example.com` |
+| Farmer | Sunita Pawar | `sunita.farmer@example.com` |
+| Farmer | Harpreet Singh | `harpreet.farmer@example.com` |
+| Farmer | Manjunath Gowda | `manjunath.farmer@example.com` |
+| Farmer | Vikram Chauhan | `vikram.farmer@example.com` |
+| Buyer | Anita Traders | `anita.buyer@example.com` |
+| Buyer | Kisan Fresh Foods | `kisan.buyer@example.com` |
+| Buyer | Mehta Agro Exports | `mehta.buyer@example.com` |
+| Buyer | GreenBasket Retail | `greenbasket.buyer@example.com` |
+
+What the data covers:
+
+| Scenario | Listing |
+| --- | --- |
+| Live bidding with history | Organic Shankar-6 cotton (4 bids), Nashik red onions, Shimla apples, Jalgaon bananas |
+| First bid | Jalandhar Kufri Jyoti potatoes (no bids yet) |
+| Automatic settlement, live | Fresh winter cauliflower ends 20 minutes after seeding (`--ending-soon=<minutes>` to change), then the deal locks to the top bidder |
+| Automatic settlement, on startup | Byadgi green chillies ended just before seeding; the API closes it within a minute of starting |
+| Admin moderation | Sharbati wheat and Sangli turmeric are `PENDING` |
+| Payment | Karnal 1121 basmati rice is locked to Kisan Fresh Foods and unpaid (use Razorpay test mode) |
+| Completed deals and reviews | Kolar mangoes and Kolar tomatoes, paid and reviewed (Manjunath Gowda's profile) |
+
+Product photos come from [Unsplash](https://unsplash.com/license) (free to use). If Cloudinary is configured, the seed uploads them to your Cloudinary account once and reuses them on later runs; otherwise, or with `--no-cloudinary`, listings use the Unsplash URLs directly. The photo sources are listed in [`backend/seed/data.js`](backend/seed/data.js).
 
 ## Auction and payment lifecycle
 
