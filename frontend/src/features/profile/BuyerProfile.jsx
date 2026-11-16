@@ -101,7 +101,16 @@ const BuyerProfile = () => {
               await fetchProfile();
             }
           } catch (error) {
-            showError(t('profile.paymentVerifyFailed'));
+            // Razorpay has already taken the money at this point. If our
+            // confirmation call fails (network drop, server restart), the
+            // Razorpay webhook still marks the deal paid on the server, so
+            // tell the buyer it is being confirmed and check again shortly.
+            if (error.response?.status === 400) {
+              showError(t('profile.paymentVerifyFailed'));
+            } else {
+              showInfo(t('profile.paymentConfirming'));
+              setTimeout(() => fetchProfile(), 5000);
+            }
             console.error(error);
           }
         },

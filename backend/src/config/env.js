@@ -15,7 +15,8 @@ export const env = {
   },
   razorpay: {
     keyId: process.env.RAZORPAY_KEY_ID,
-    keySecret: process.env.RAZORPAY_KEY_SECRET
+    keySecret: process.env.RAZORPAY_KEY_SECRET,
+    webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET
   },
   smtp: {
     host: process.env.SMTP_HOST,
@@ -23,5 +24,29 @@ export const env = {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
   },
-  clientUrl: process.env.CLIENT_URL || "http://localhost:5173"
+  // Normalised once here so Express CORS and Socket.IO CORS always agree.
+  clientUrl: (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/+$/, ""),
+  settlementIntervalMs: Number(process.env.SETTLEMENT_INTERVAL_MS) || 60_000
+};
+
+// Fail fast at startup instead of crashing on the first login or payment.
+// RAZORPAY_WEBHOOK_SECRET is only warned about, so the app still runs locally
+// without a public webhook URL.
+export const assertRequiredEnv = () => {
+  const required = {
+    MONGO_URI: env.mongoUri,
+    JWT_ACCESS_SECRET: env.jwtAccessSecret,
+    JWT_REFRESH_SECRET: env.jwtRefreshSecret,
+    RAZORPAY_KEY_ID: env.razorpay.keyId,
+    RAZORPAY_KEY_SECRET: env.razorpay.keySecret
+  };
+  const missing = Object.entries(required)
+    .filter(([, value]) => !value)
+    .map(([name]) => name);
+  if (missing.length) {
+    throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
+  }
+  if (!env.razorpay.webhookSecret) {
+    console.warn("RAZORPAY_WEBHOOK_SECRET is not set: the Razorpay webhook will reject all events.");
+  }
 };

@@ -4,11 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { setCurrentAuction, updateAuctionBid } from './auctionSlice';
 import BidModal from '../bids/BidModal';
+import BidHistory from '../../components/auction/BidHistory';
+import ActivityTimeline from '../../components/auction/ActivityTimeline';
 import Button from '../../components/common/Button';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import api from '../../services/api';
 import { initSocket, connectSocket } from '../../services/socket';
-import { showSuccess, showError } from '../../utils/toast';
+import { showSuccess } from '../../utils/toast';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -37,6 +39,8 @@ const AuctionDetailPage = () => {
   const [bidModalOpen, setBidModalOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
+  // Bumped whenever the auction changes, so bid history and timeline refetch.
+  const [activityVersion, setActivityVersion] = useState(0);
 
 
   useEffect(() => {
@@ -52,30 +56,36 @@ const AuctionDetailPage = () => {
 
 
     // Listen for real-time bid updates
-    socket.on('new-bid', (data) => {
+    const onNewBid = (data) => {
       if (data.auctionId === id) {
         dispatch(updateAuctionBid(data));
+        setActivityVersion((v) => v + 1);
       }
-    });
+    };
 
-
-    socket.on('auction-closed', (data) => {
+    const onAuctionClosed = (data) => {
       if (data.auctionId === id) {
-        fetchAuction(); // Refresh to show closed status
+        fetchAuction({ silent: true }); // Refresh to show closed status
+        setActivityVersion((v) => v + 1);
       }
-    });
+    };
+
+    socket.on('new-bid', onNewBid);
+    socket.on('auction-closed', onAuctionClosed);
 
 
     return () => {
       socket.emit('leave-auction', id);
-      socket.off('new-bid');
-      socket.off('auction-closed');
+      // Remove only this page's handlers, not every listener for the event.
+      socket.off('new-bid', onNewBid);
+      socket.off('auction-closed', onAuctionClosed);
     };
   }, [id]);
 
 
-  const fetchAuction = async () => {
-    setLoading(true);
+  // `silent` refreshes in the background without replacing the page with a spinner.
+  const fetchAuction = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     try {
       const { data } = await api.get(`/auctions/${id}`);
       if (data.success) {
@@ -89,14 +99,22 @@ const AuctionDetailPage = () => {
   };
 
 
+  // Errors propagate to BidModal, which shows the server's message
+  // (for example "Bid too low. Minimum allowed is 160").
   const handlePlaceBid = async (amount) => {
-    try {
-      const { data } = await api.post(`/${id}/bids`, { amount });
-      if (data.success) {
-        showSuccess(t('bid.bidSuccess'));
-      }
-    } catch (error) {
-      throw error;
+    const { data } = await api.post(`/auctions/${id}/bids`, { amount });
+    if (data.success) {
+      // Update from the API response too, so the page is right even if the
+      // socket connection is down.
+      dispatch(
+        updateAuctionBid({
+          auctionId: data.auction._id,
+          currentHighestBidAmount: data.auction.currentHighestBidAmount,
+          currentHighestBidder: data.auction.currentHighestBidder,
+        })
+      );
+      setActivityVersion((v) => v + 1);
+      showSuccess(t('bid.bidSuccess'));
     }
   };
 
@@ -163,8 +181,12 @@ const AuctionDetailPage = () => {
   }
 
 
+  // The stored user has `id` (from /auth/login and /auth/me), not `_id`.
+  const userId = user?.id ?? user?._id;
   const isBuyer = user?.role === 'buyer';
-  const isFarmer = user?.role === 'farmer' && currentAuction.farmer._id === user._id;
+  const isFarmer = user?.role === 'farmer' && String(currentAuction.farmer?._id) === String(userId);
+  const isWinner = Boolean(userId) && String(currentAuction.lockedDeal?.buyer) === String(userId);
+  const canSeeTimeline = isFarmer || isWinner || user?.role === 'admin';
   const isClosed = currentAuction.status === 'CLOSED' || currentAuction.lockedDeal?.isLocked;
   const timeRemaining = getTimeRemaining(currentAuction.auctionEndsAt);
 
@@ -405,6 +427,12 @@ const AuctionDetailPage = () => {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Bid history and audit trail */}
+          <div className={`grid gap-6 mt-8 ${canSeeTimeline ? 'lg:grid-cols-2' : ''}`}>
+            <BidHistory auctionId={id} refreshKey={activityVersion} />
+            {canSeeTimeline && <ActivityTimeline auctionId={id} refreshKey={activityVersion} />}
           </div>
         </div>
       </div>

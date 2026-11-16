@@ -7,6 +7,7 @@ import Input from '../../components/common/Input';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import Modal from '../../components/common/Modal';
 import api from '../../services/api';
+import { toLocalInputValue, fromLocalInputValue } from '../../utils/dateInput';
 import { showSuccess, showError } from '../../utils/toast';
 import { 
   ShieldCheck, 
@@ -34,9 +35,18 @@ const AdminDashboard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [approvalDates, setApprovalDates] = useState({
-    auctionStartsAt: new Date().toISOString().slice(0, 16),
+    auctionStartsAt: toLocalInputValue(new Date()),
     auctionEndsAt: '',
   });
+
+
+  // Hooks must run on every render, before the early return below (on a hard
+  // refresh `user` is null for the first render).
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    setIsVisible(true);
+    fetchPendingAuctions();
+  }, [user?.role]);
 
 
   // Redirect if not admin
@@ -61,12 +71,6 @@ const AdminDashboard = () => {
   }
 
 
-  useEffect(() => {
-    setIsVisible(true);
-    fetchPendingAuctions();
-  }, []);
-
-
   const fetchPendingAuctions = async () => {
     setLoading(true);
     try {
@@ -85,11 +89,11 @@ const AdminDashboard = () => {
 
   const handleApproveClick = (auction) => {
     setSelectedAuction(auction);
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() + 15);
+    // Produce is perishable: by default the auction ends when the produce
+    // expires, and the server rejects any end time after that.
     setApprovalDates({
-      auctionStartsAt: new Date().toISOString().slice(0, 16),
-      auctionEndsAt: endDate.toISOString().slice(0, 16),
+      auctionStartsAt: toLocalInputValue(new Date()),
+      auctionEndsAt: toLocalInputValue(auction.expiresAt),
     });
     setModalOpen(true);
   };
@@ -99,7 +103,10 @@ const AdminDashboard = () => {
     try {
       const { data } = await api.post(
         `/admin/auctions/${selectedAuction._id}/approve`,
-        approvalDates
+        {
+          auctionStartsAt: fromLocalInputValue(approvalDates.auctionStartsAt),
+          auctionEndsAt: fromLocalInputValue(approvalDates.auctionEndsAt),
+        }
       );
       if (data.success) {
         showSuccess(t('admin.approveSuccess'));
@@ -398,8 +405,16 @@ const AdminDashboard = () => {
               }
               required
               min={approvalDates.auctionStartsAt}
+              max={selectedAuction ? toLocalInputValue(selectedAuction.expiresAt) : undefined}
               className="w-full h-12 px-4 border border-[#E5DED3] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ea7f61] focus:border-transparent transition-all text-[#2D2D2D]"
             />
+            {selectedAuction?.expiresAt && (
+              <p className="mt-2 text-xs text-[#6B6B6B]">
+                {t('admin.produceExpires', {
+                  date: new Date(selectedAuction.expiresAt).toLocaleString(i18n.language === 'hi' ? 'hi-IN' : 'en-IN'),
+                })}
+              </p>
+            )}
           </div>
 
 

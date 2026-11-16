@@ -15,37 +15,41 @@ import profileRouter from "./routes/profile.routes.js";
 import reviewRouter from "./routes/review.routes.js";
 import uploadRouter from "./routes/upload.routes.js";
 import paymentRouter from "./routes/payment.routes.js";
-
+import { razorpayWebhook } from "./controllers/payment.controller.js";
 
 const app = express();
 
-// Enable trust proxy for Socket.io
+// Behind one proxy (Render/Railway etc.), so req.ip is the real client IP.
 app.set("trust proxy", 1);
 
-
 app.use(helmet());
+if (env.nodeEnv === "development") {
+  app.use(morgan("dev"));
+}
+
+// Razorpay webhook: registered BEFORE express.json() with a raw body parser,
+// because its HMAC signature is computed over the exact bytes Razorpay sent.
+// It is server-to-server (no browser Origin), and is authenticated by that
+// signature, not by a user session.
+app.post("/api/payment/webhook", express.raw({ type: "application/json", limit: "1mb" }), razorpayWebhook);
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
+      // Requests with no Origin header (curl, server-to-server) are allowed;
+      // browsers always send one for cross-site requests.
       if (!origin) return callback(null, true);
-
-      const allowedOrigin = env.clientUrl.endsWith('/') ? env.clientUrl.slice(0, -1) : env.clientUrl;
-      if (origin === allowedOrigin) {
-        return callback(null, true);
-      } else {
-        return callback(new Error('Not allowed by CORS'));
-      }
+      if (origin === env.clientUrl) return callback(null, true);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true
   })
 );
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+
+// The API is JSON-only (image uploads use multipart via multer). Not parsing
+// urlencoded bodies means a plain cross-site HTML <form> cannot submit to it.
+app.use(express.json({ limit: "100kb" }));
 app.use(cookieParser());
-if (env.nodeEnv === "development") {
-  app.use(morgan("dev"));
-}
 
 app.use("/api/auth", authRouter);
 
@@ -59,9 +63,12 @@ app.use("/api", reviewRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api", paymentRouter);
 
-
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found" });
 });
 
 app.use(errorHandler);

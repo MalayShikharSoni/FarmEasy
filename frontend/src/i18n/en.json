@@ -216,7 +216,8 @@
     "paymentFor": "Payment for",
     "paymentSuccess": "Payment successful! 🎉",
     "paymentVerifyFailed": "Payment verification failed",
-    "paymentFailed": "Failed to process payment"
+    "paymentFailed": "Failed to process payment",
+    "paymentConfirming": "Payment received. We are confirming it with Razorpay, this page will update shortly."
   },
   "review": {
     "title": "Rate your experience",
@@ -313,7 +314,8 @@
     "lockDealSuccess": "Deal locked successfully!",
     "lockDealError": "Failed to lock deal",
     "accessDenied": "Access Denied",
-    "accessDeniedMessage": "Only farmers can access this page."
+    "accessDeniedMessage": "Only farmers can access this page.",
+    "statusClosedNoBids": "Closed – no bids"
   },
   "admin": {
     "dashboard": "Admin Dashboard",
@@ -358,7 +360,8 @@
     "allAuctionsReviewed": "All auctions have been reviewed",
     "pendingApprovalBadge": "PENDING APPROVAL",
     "awaitingReview": "Awaiting Review",
-    "category": "Category"
+    "category": "Category",
+    "produceExpires": "Produce expires on {{date}}. The auction must end by then."
   },
   "categories": {
     "wheat": "Wheat",
@@ -560,5 +563,31 @@
     "forAuction": "For: {{title}}",
     "successfulPurchases": "Successful Purchases",
     "fromFarmer": "From: {{name}}"
+  },
+  "timeline": {
+    "title": "Activity timeline",
+    "events": {
+      "CREATED": "Listing created",
+      "APPROVED": "Approved by admin",
+      "REJECTED": "Rejected by admin",
+      "BID_ACCEPTED": "Bid accepted",
+      "DEAL_LOCKED": "Deal locked by farmer",
+      "AUTO_SETTLED": "Auction ended, deal locked automatically",
+      "CLOSED_NO_BIDS": "Auction ended with no bids",
+      "PAYMENT_CAPTURED": "Payment received",
+      "PAYMENT_FAILED": "Payment attempt failed"
+    },
+    "actors": {
+      "farmer": "Farmer",
+      "buyer": "Buyer",
+      "admin": "Admin",
+      "system": "FarmEasy",
+      "razorpay": "Razorpay"
+    }
+  },
+  "bidHistory": {
+    "title": "Bid history ({{count}})",
+    "empty": "No bids yet. Be the first to bid!",
+    "highest": "Highest"
   }
 }

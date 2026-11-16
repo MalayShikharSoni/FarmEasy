@@ -31,6 +31,16 @@ const MyAuctionsPage = () => {
   const [isVisible, setIsVisible] = useState(false);
 
 
+  // Hooks must run on every render, before the early return below: on a hard
+  // refresh `user` is null for the first render, and a hook that only runs
+  // after auth loads makes React throw.
+  useEffect(() => {
+    if (user?.role !== 'farmer') return;
+    setIsVisible(true);
+    fetchMyAuctions();
+  }, [user?.role]);
+
+
   // Redirect if not farmer
   if (user?.role !== 'farmer') {
     return (
@@ -53,12 +63,6 @@ const MyAuctionsPage = () => {
   }
 
 
-  useEffect(() => {
-    setIsVisible(true);
-    fetchMyAuctions();
-  }, []);
-
-
   const fetchMyAuctions = async () => {
     setLoading(true);
     try {
@@ -75,20 +79,25 @@ const MyAuctionsPage = () => {
   };
 
 
-  const handleLockDeal = async (auctionId) => {
+  const handleLockDeal = async (auction) => {
     if (!window.confirm(t('myAuctions.lockDealConfirm'))) {
       return;
     }
 
 
     try {
-      const { data } = await api.post(`/auctions/${auctionId}/lock`);
+      // Send the amount shown on screen. If a higher bid arrived meanwhile,
+      // the server answers 409 instead of locking a price the farmer never saw.
+      const { data } = await api.post(`/auctions/${auction._id}/lock`, {
+        expectedAmount: auction.currentHighestBidAmount,
+      });
       if (data.success) {
         showSuccess(t('myAuctions.lockDealSuccess'));
         fetchMyAuctions();
       }
     } catch (error) {
       showError(error.response?.data?.message || t('myAuctions.lockDealError'));
+      if (error.response?.status === 409) fetchMyAuctions();
     }
   };
 
@@ -103,6 +112,15 @@ const MyAuctionsPage = () => {
       );
     }
     
+    if (auction.status === 'CLOSED' && !auction.lockedDeal?.isLocked) {
+      return (
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
+          <XCircle className="w-3.5 h-3.5" />
+          {t('myAuctions.statusClosedNoBids')}
+        </div>
+      );
+    }
+
     if (auction.status === 'CLOSED' && !auction.lockedDeal?.isPaid) {
       return (
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-orange-100 text-orange-700">
@@ -397,7 +415,7 @@ const MyAuctionsPage = () => {
                             auction.currentHighestBidAmount > 0 &&
                             !auction.lockedDeal?.isLocked && (
                               <button
-                                onClick={() => handleLockDeal(auction._id)}
+                                onClick={() => handleLockDeal(auction)}
                                 className="inline-flex items-center gap-2 bg-[#ea7f61] hover:bg-[#d85f3f] text-white font-bold py-2 px-4 rounded-xl transition-all shadow-md hover:shadow-lg"
                               >
                                 <Lock className="w-4 h-4" />

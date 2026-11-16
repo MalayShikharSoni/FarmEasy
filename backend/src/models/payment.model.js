@@ -18,9 +18,14 @@ const paymentSchema = new Schema(
     
     status: { type: String, enum: PAYMENT_STATUS, default: "PENDING", index: true },
     
-    paidAt: Date
+    paidAt: Date,
+
+    // Which path confirmed the payment first: the browser checkout callback
+    // or Razorpay's server-to-server webhook.
+    capturedVia: { type: String, enum: ["checkout", "webhook"] },
+    failureReason: String
   },
   { timestamps: true }
 );
 
-export const Payment = mongoose.model("Payment", paymentSchema);
+export const Payment = mongoose.model("Payment", paymentSchema);

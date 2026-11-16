@@ -10,13 +10,23 @@ import { sendEmail } from "../utils/mailer.js";
 import { env } from "../config/env.js";
 import { verifyRefreshToken } from "../utils/jwt.js";
 
+// User-supplied values must be escaped before going into email HTML, otherwise
+// a "name" like <a href="...">Claim reward</a> turns our emails into phishing.
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 export const signup = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res
         .status(StatusCodes.BAD_REQUEST)
-        .json({ success: false, errors: errors.array() });
+        .json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
     }
 
     const { name, email, password, role, phone } = req.body;
@@ -36,7 +46,7 @@ export const signup = async (req, res, next) => {
       email,
       password,
       role,
-      phone,
+      phone: phone || undefined,
       emailVerificationToken,
       emailVerificationExpires
     });
@@ -47,7 +57,7 @@ export const signup = async (req, res, next) => {
       to: user.email,
       subject: "Verify your FarmEasy account",
       html: `
-        <p>Hi ${user.name},</p>
+        <p>Hi ${escapeHtml(user.name)},</p>
         <p>Click the link below to verify your email:</p>
         <p><a href="${verifyUrl}">${verifyUrl}</a></p>
         <p>This link will expire in 1 hour.</p>
@@ -65,35 +75,16 @@ export const signup = async (req, res, next) => {
 export const verifyEmail = async (req, res, next) => {
   try {
     const { token } = req.query;
-
-    console.log('=== EMAIL VERIFICATION DEBUG ===');
-    console.log('Token from URL:', token);
-    console.log('Token length:', token?.length);
-    console.log('Current time:', Date.now());
+    if (typeof token !== "string" || !token) {
+      return res
+        .status(StatusCodes.BAD_REQUEST)
+        .json({ success: false, message: "Invalid or expired token" });
+    }
 
     const user = await User.findOne({
       emailVerificationToken: token,
       emailVerificationExpires: { $gt: Date.now() }
     });
-
-    console.log('User found:', user ? 'YES' : 'NO');
-
-    if (user) {
-      console.log('User email:', user.email);
-      console.log('Token in DB:', user.emailVerificationToken);
-      console.log('Token expires:', user.emailVerificationExpires);
-      console.log('Time left (ms):', user.emailVerificationExpires - Date.now());
-    } else {
-      // Check if user exists with this token but expired
-      const expiredUser = await User.findOne({ emailVerificationToken: token });
-      if (expiredUser) {
-        console.log('Token found but EXPIRED');
-        console.log('Expired at:', expiredUser.emailVerificationExpires);
-        console.log('Current time:', Date.now());
-      } else {
-        console.log('No user found with this token at all');
-      }
-    }
 
     if (!user) {
       return res
@@ -106,11 +97,9 @@ export const verifyEmail = async (req, res, next) => {
     user.emailVerificationExpires = undefined;
     await user.save();
 
-    console.log('✅ Email verified successfully');
 
     return res.json({ success: true, message: "Email verified successfully" });
   } catch (err) {
-    console.error('Verification error:', err);
     next(err);
   }
 };
@@ -122,7 +111,7 @@ export const login = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res
         .status(StatusCodes.BAD_REQUEST)
-        .json({ success: false, errors: errors.array() });
+        .json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
     }
 
     const { email, password } = req.body;
@@ -180,8 +169,15 @@ export const login = async (req, res, next) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  // Browsers only clear a cookie when the attributes match the ones it was set
+  // with (secure / sameSite), so pass the same options used at login.
+  const cookieOptions = {
+    httpOnly: true,
+    secure: env.nodeEnv === "production",
+    sameSite: env.nodeEnv === "production" ? "none" : "lax"
+  };
+  res.clearCookie("accessToken", cookieOptions);
+  res.clearCookie("refreshToken", cookieOptions);
   return res.json({ success: true, message: "Logged out" });
 };
 
@@ -235,7 +231,7 @@ export const forgotPassword = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res
         .status(StatusCodes.BAD_REQUEST)
-        .json({ success: false, errors: errors.array() });
+        .json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
     }
 
     const { email } = req.body;
@@ -262,7 +258,7 @@ export const forgotPassword = async (req, res, next) => {
       to: user.email,
       subject: "Reset your FarmEasy password",
       html: `
-        <p>Hi ${user.name},</p>
+        <p>Hi ${escapeHtml(user.name)},</p>
         <p>You requested to reset your password for your FarmEasy account.</p>
         <p>Click the link below to choose a new password:</p>
         <p><a href="${resetUrl}">${resetUrl}</a></p>
@@ -285,7 +281,7 @@ export const resetPassword = async (req, res, next) => {
     if (!errors.isEmpty()) {
       return res
         .status(StatusCodes.BAD_REQUEST)
-        .json({ success: false, errors: errors.array() });
+        .json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
     }
 
     const { token } = req.query;

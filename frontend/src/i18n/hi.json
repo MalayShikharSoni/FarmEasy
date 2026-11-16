@@ -216,7 +216,8 @@
     "paymentFor": "भुगतान के लिए",
     "paymentSuccess": "भुगतान सफल! 🎉",
     "paymentVerifyFailed": "भुगतान सत्यापन विफल",
-    "paymentFailed": "भुगतान संसाधित करने में विफल"
+    "paymentFailed": "भुगतान संसाधित करने में विफल",
+    "paymentConfirming": "भुगतान प्राप्त हुआ। हम Razorpay से इसकी पुष्टि कर रहे हैं, यह पेज जल्द ही अपडेट होगा।"
   },
   "review": {
     "title": "अपना अनुभव रेट करें",
@@ -313,7 +314,8 @@
     "lockDealSuccess": "सौदा सफलतापूर्वक लॉक किया गया!",
     "lockDealError": "सौदा लॉक करने में विफल",
     "accessDenied": "पहुंच अस्वीकृत",
-    "accessDeniedMessage": "केवल किसान इस पेज को एक्सेस कर सकते हैं।"
+    "accessDeniedMessage": "केवल किसान इस पेज को एक्सेस कर सकते हैं।",
+    "statusClosedNoBids": "बंद – कोई बोली नहीं"
   },
   "admin": {
     "dashboard": "एडमिन डैशबोर्ड",
@@ -358,7 +360,8 @@
     "allAuctionsReviewed": "सभी नीलामियों की समीक्षा की गई है",
     "pendingApprovalBadge": "अनुमोदन लंबित",
     "awaitingReview": "समीक्षा प्रतीक्षित",
-    "category": "श्रेणी"
+    "category": "श्रेणी",
+    "produceExpires": "उपज {{date}} को खराब हो जाएगी। नीलामी उससे पहले समाप्त होनी चाहिए।"
   },
   "categories": {
     "wheat": "गेहूं",
@@ -560,5 +563,31 @@
     "forAuction": "के लिए: {{title}}",
     "successfulPurchases": "सफल खरीद",
     "fromFarmer": "से: {{name}}"
+  },
+  "timeline": {
+    "title": "गतिविधि समयरेखा",
+    "events": {
+      "CREATED": "लिस्टिंग बनाई गई",
+      "APPROVED": "एडमिन द्वारा स्वीकृत",
+      "REJECTED": "एडमिन द्वारा अस्वीकृत",
+      "BID_ACCEPTED": "बोली स्वीकार हुई",
+      "DEAL_LOCKED": "किसान ने सौदा लॉक किया",
+      "AUTO_SETTLED": "नीलामी समाप्त, सौदा स्वतः लॉक हुआ",
+      "CLOSED_NO_BIDS": "नीलामी बिना बोली के समाप्त",
+      "PAYMENT_CAPTURED": "भुगतान प्राप्त हुआ",
+      "PAYMENT_FAILED": "भुगतान का प्रयास विफल"
+    },
+    "actors": {
+      "farmer": "किसान",
+      "buyer": "खरीदार",
+      "admin": "एडमिन",
+      "system": "FarmEasy",
+      "razorpay": "Razorpay"
+    }
+  },
+  "bidHistory": {
+    "title": "बोली इतिहास ({{count}})",
+    "empty": "अभी कोई बोली नहीं। पहली बोली लगाएँ!",
+    "highest": "सबसे ऊँची"
   }
 }

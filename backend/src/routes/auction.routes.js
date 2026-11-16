@@ -1,17 +1,19 @@
 import { Router } from "express";
 import { body } from "express-validator";
-import { requireAuth } from "../middleware/auth.middleware.js";
+import { requireAuth, optionalAuth } from "../middleware/auth.middleware.js";
 import {
   createAuctionRequest,
   listMarketAuctions,
   getAuctionById,
-  lockDeal
+  lockDeal,
+  getAuctionTimeline
 } from "../controllers/auction.controller.js";
 
 const router = Router();
 
 router.get("/", listMarketAuctions);
-router.get("/:id", getAuctionById);
+router.get("/:id", optionalAuth, getAuctionById);
+router.get("/:id/timeline", requireAuth, getAuctionTimeline);
 
 router.post(
   "/",

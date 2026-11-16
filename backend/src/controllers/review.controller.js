@@ -8,7 +8,7 @@ export const createReview = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, errors: errors.array() });
+      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
     }
 
     if (req.user.role !== "buyer") {
@@ -28,6 +28,11 @@ export const createReview = async (req, res, next) => {
 
     if (auction.lockedDeal.buyer.toString() !== req.user._id.toString()) {
       return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: "Only the buyer of this deal can review" });
+    }
+
+    // Only a completed (paid) deal can be reviewed.
+    if (!auction.lockedDeal.isPaid) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: "You can review the farmer after payment is complete" });
     }
 
     const existing = await Review.findOne({ auction: auction._id, buyer: req.user._id });

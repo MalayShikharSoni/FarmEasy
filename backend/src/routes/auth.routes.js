@@ -12,6 +12,7 @@ import {
 } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 
+import { authLimiter } from "../middleware/rateLimit.middleware.js";
 const router = Router();
 
 const signupValidation = [
@@ -24,8 +25,9 @@ const signupValidation = [
     .optional()
     .isIn(["farmer", "buyer"])
     .withMessage("Role must be farmer or buyer"),
+  // The signup form sends "" when phone is left blank; treat that as absent.
   body("phone")
-    .optional()
+    .optional({ values: "falsy" })
     .isString()
     .isLength({ min: 8, max: 15 })
     .withMessage("Phone must be 8-15 characters"),
@@ -48,15 +50,15 @@ const resetPasswordValidation = [
 ];
 
 // Routes
-router.post("/signup", ...signupValidation, signup);
+router.post("/signup", authLimiter, ...signupValidation, signup);
 router.get("/verify-email", verifyEmail);
-router.post("/login", ...loginValidation, login);
+router.post("/login", authLimiter, ...loginValidation, login);
 router.post("/logout", logout);
 router.post("/refresh", refresh);
 router.get("/me", requireAuth, me);
 
 // NEW routes
-router.post("/forgot-password", ...forgotPasswordValidation, forgotPassword);
-router.post("/reset-password", ...resetPasswordValidation, resetPassword);
+router.post("/forgot-password", authLimiter, ...forgotPasswordValidation, forgotPassword);
+router.post("/reset-password", authLimiter, ...resetPasswordValidation, resetPassword);
 
 export default router;
